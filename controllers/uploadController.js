@@ -2,6 +2,7 @@ const csv = require("csv-parser");
 const fs = require("fs");
 // const { connectDB } = require("../config/db");
 const { MongoClient } = require("mongodb");
+const Bank = require("../model/BankSchema"); 
 
 const mongoURI =
   "mongodb+srv://excellence-pardeep:excellence-pardeep@cluster0.mfk2efk.mongodb.net/";
@@ -16,6 +17,7 @@ const uploadCSVFiles = async (req, res) => {
   try {
     // connectDB();
     // console.log(connectDB.collection);
+   
 
     for (const file of req.files) {
       const results = [];
@@ -23,9 +25,51 @@ const uploadCSVFiles = async (req, res) => {
       fs.createReadStream(file.path)
         .pipe(csv())
         .on("data", (data) => {
-          data.BankName = req.body.BankName;
-          data.AccountNumber = req.body.AccountNumber;
-          results.push(data);
+          let type="";
+          let transaction_amount;
+          let result ={};
+          if (req.body.BankName === "HDFC") {
+            // if (data["Debit Amount"] !== "0" && data["Credit Amount"] === "0") {
+            //   type = "DR";
+            //   transaction_amount = data["Debit Amount"];
+            // } else if (
+            //   data["Debit Amount"] === "0" &&
+            //   data["Credit Amount"] !== "0"
+            // ) {
+            //   type = "CR";
+            //   transaction_amount = data["Credit Amount"];
+            // }
+            const debitAmount = parseFloat(data["Debit Amount"]);
+const creditAmount = parseFloat(data["Credit Amount"]);
+const type = debitAmount !== 0
+  ? "DR"
+  : creditAmount !== 0
+  ? "CR"
+  : "";
+const transaction_amount = type === "DR" ? debitAmount : creditAmount;
+            result.date = data["Date"];
+            result.description = data["Narration"];
+            result.type = type;
+            result.transaction_amount = transaction_amount;
+            result.cheque_no = data["Chq/Ref Number"];
+            result.total_balance = data["Closing Balance"];
+            result.transaction_id = null;
+            result.txn_posted_date=null;
+          } else if (req.body.BankName === "ICICI") {
+            result.date = data["Value Date"];
+            result.description = data["Description"];
+            result.type = data["Cr/Dr"];
+            result.transaction_amount = data["Transaction Amount(INR)"];
+            result.cheque_no = data["ChequeNo."];
+            result.total_balance = data["Available Balance(INR)"];
+            result.transaction_id = data['Transaction ID']
+            result.txn_posted_date = data['Txn Posted Date']
+          }
+          result.bank_name = req.body.BankName;
+          result.account_number = req.body.AccountNumber;
+
+          results.push(result);
+        
         })
         .on("end", async () => {
           try {
