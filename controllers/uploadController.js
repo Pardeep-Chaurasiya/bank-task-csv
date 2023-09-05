@@ -1,44 +1,23 @@
 const csv = require("csv-parser");
 const fs = require("fs");
-// const { connectDB } = require("../config/db");
-const { MongoClient } = require("mongodb");
-const Bank = require("../model/BankSchema"); 
+const Bank = require("../model/bank");
+const Statement = require('../model/statement');
+const Account = require("../model/account");
 
-const mongoURI =
-  "mongodb+srv://excellence-pardeep:excellence-pardeep@cluster0.mfk2efk.mongodb.net/";
-const dbName = "CSV_Upload";
-const client = new MongoClient(mongoURI);
-client.connect(); // Connect to MongoDB server
-
-const db = client.db(dbName);
-const collection = db.collection("commondata");
 
 const uploadCSVFiles = async (req, res) => {
   try {
-    // connectDB();
-    // console.log(connectDB.collection);
-   
-
     for (const file of req.files) {
       const results = [];
+      let bankName = req.body.bankName;
+      bankName.toUpperCase()
 
       fs.createReadStream(file.path)
         .pipe(csv())
         .on("data", (data) => {
-          let type="";
-          let transaction_amount;
           let result ={};
-          if (req.body.BankName === "HDFC") {
-            // if (data["Debit Amount"] !== "0" && data["Credit Amount"] === "0") {
-            //   type = "DR";
-            //   transaction_amount = data["Debit Amount"];
-            // } else if (
-            //   data["Debit Amount"] === "0" &&
-            //   data["Credit Amount"] !== "0"
-            // ) {
-            //   type = "CR";
-            //   transaction_amount = data["Credit Amount"];
-            // }
+          if (bankName === "HDFC") {
+
             const debitAmount = parseFloat(data["Debit Amount"]);
 const creditAmount = parseFloat(data["Credit Amount"]);
 const type = debitAmount !== 0
@@ -55,7 +34,7 @@ const transaction_amount = type === "DR" ? debitAmount : creditAmount;
             result.total_balance = data["Closing Balance"];
             result.transaction_id = null;
             result.txn_posted_date=null;
-          } else if (req.body.BankName === "ICICI") {
+          } else if (bankName === "ICICI") {
             result.date = data["Value Date"];
             result.description = data["Description"];
             result.type = data["Cr/Dr"];
@@ -65,7 +44,7 @@ const transaction_amount = type === "DR" ? debitAmount : creditAmount;
             result.transaction_id = data['Transaction ID']
             result.txn_posted_date = data['Txn Posted Date']
           }
-          result.bank_name = req.body.BankName;
+          result.bank_name = bankName;
           result.account_number = req.body.AccountNumber;
 
           results.push(result);
@@ -73,7 +52,7 @@ const transaction_amount = type === "DR" ? debitAmount : creditAmount;
         })
         .on("end", async () => {
           try {
-            await collection.insertMany(results);
+            await Statement.insertMany(results);
             fs.unlinkSync(file.path);
           } catch (insertError) {
             console.error("Error inserting data:", insertError);
@@ -121,7 +100,7 @@ const login = (req, res) => {
 };
 
 const getAll = async (req, res) => {
-  const data = await collection.find({}).toArray();
+  const data = await collection.find({})
   console.log(data);
   res.status(200).json({
     message: "fetch data successfully",
@@ -129,4 +108,76 @@ const getAll = async (req, res) => {
     data: data,
   });
 };
-module.exports = { login, uploadCSVFiles, getAll };
+
+const postbank = async (req, res) => {
+  try {
+    const { bankName, IFSCCode, bankAddress } = req.body;
+    const savedBank = await new Bank.create({ 
+      bankName:bankName,
+      IFSCCode:IFSCCode,
+      bankAddress:bankAddress
+     });
+    if (!savedBank) {
+      return res.status(500).json({
+        code: "Internal-Server-Error",
+        error: "Something went wrong while registering Bank detail",
+      });
+    }
+    return res.status(200).json({
+      message: "Bank detail Registered Successfully !!",
+      Bank: savedBank,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      code: "Internal-Server-Error",
+      error: "Something went wrong while processing your request.",
+    });
+  }
+};
+const postaccount = async(req,res)=>{
+  try {
+    const {accountno,bankName} = req.body;
+    const data = await Account.create({
+      accountno:accountno,
+      bankName:bankName
+    })
+      if (!data) {
+        return res.status(500).json({
+          code: "Internal-Server-Error",
+          error: "Something went wrong while registering Bank detail",
+        });
+      }
+      return res.status(200).json({
+        message: "Accounr details Registered Successfully !!",
+        Bank: data,
+      });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      code: "Internal-Server-Error",
+      error: "Something went wrong while processing your request.",
+    });
+  }
+}
+
+const getaccount =async (req,res)=>{
+  try {
+    const getaccount = await Account.find().populate('bankName');
+    console.log(getaccount)
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+const getsingleaccount = async (req,res) => {
+  try {
+    const accountno = req.params.id
+    const singleaccount = await Account.find({accountno:accountno})
+    console.log(singleaccount)
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+module.exports = { login, uploadCSVFiles, getAll,postbank,postaccount,getaccount,getsingleaccount };

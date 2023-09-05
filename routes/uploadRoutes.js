@@ -17,9 +17,15 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
-router.post("/upload", upload.array("file"), uploadController.uploadCSVFiles);
-
 router.post("/login", uploadController.login);
+
+router.post("/upload", upload.array("file"), uploadController.uploadCSVFiles);
 router.get("/getall", uploadController.getAll);
+
+router.post('/postbank',uploadController.postbank)
+router.post('/postaccount',uploadController.postaccount)
+
+router.get('/getaccount',uploadController.getaccount)
+router.get('/getaccount/:id',uploadController.getsingleaccount)
 
 module.exports = router;

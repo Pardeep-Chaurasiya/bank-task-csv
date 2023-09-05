@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const BankSchemas = new mongoose.Schema({
+const StatementSchemas = new mongoose.Schema({
     date:{
         type:String
     },
@@ -33,5 +33,5 @@ const BankSchemas = new mongoose.Schema({
     }
 })
 
-const Bank = mongoose.model("BankSchema",BankSchemas)
-module.exports = Bank;
+const Statement = mongoose.model("statement",StatementSchemas)
+module.exports = Statement;
