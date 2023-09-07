@@ -45,5 +45,8 @@ router.get("/getallaccount", accountController.getallaccount);
 
 // tag Routes
 router.post("/create-tag", tagController.createTag);
+router.get("/get-tag", tagController.getAllTags);
+router.post("/update-tag/:id", tagController.updateTag);
+router.post("/delete-tag", tagController.deleteTag);
 
 module.exports = router;
